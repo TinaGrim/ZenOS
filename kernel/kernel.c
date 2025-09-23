@@ -14,8 +14,7 @@ void main() {
     isr_install();
     irq_install();
 
-    kprint("Welcome to the ZenOS!\n"
-        "Shit\n> ");
+    kprint("Welcome to ZenOS!\n> ");
 }
 
 void user_input(char *input) {
@@ -27,7 +26,6 @@ void user_input(char *input) {
         tok = strtok(NULL, " ");
     }
     argv[argc] = NULL;
-    kprint("\n");
     if (argc == 0) { kprint("> "); return; }
 
 
@@ -101,35 +99,71 @@ void user_input(char *input) {
 
     }
     // else if (strcmp(argv[0], "ECHO") == 0) {
-    //     if (argc == 2) {
-    //         kprint(argv[1]);
-    //         kprint("\n");
-    //     }
-    //     else if (argc == 4 ) {
-    //         const char *op = argv[2];
-    //         const char *name = argv[3];
-    //         int idx = files_find(name);
-    //         if (idx == -1) {
-    //             int created = files_add(name);
-    //             if (created == -1) {
-    //                 kprint("file table full\n");
-    //             } else {
-    //                 idx = created;
-    //             }
-    //         }
-    //         if (idx != -1) {
-    //             int rc = -1;
-    //             if (strcmp((char*)op, ">>") == 0) {
-    //                 rc = files_write_append(idx, argv[1]);
-    //             } else if (strcmp((char*)op, ">") == 0) {
-    //                 rc = files_write_overwrite(idx, argv[1]);
-    //             } else {
-    //                 kprint("Unknown redirection operator\n");
-    //             }
-    //             if (rc != 0) kprint("(truncated)\n"); else kprint("(ok)\n");
-    //         }
+    //     if (argc < 2) {
+    //         kprint("Usage: ECHO <text> [>|>> <filename>]\n");
     //     } else {
-    //         kprint("Usage: ECHO <text> >|>> <filename>\n");
+    //         int redirect_idx = -1;
+    //         for (int i = 1; i < argc; i++) {
+    //             if (strcmp(argv[i], ">") == 0 || strcmp(argv[i], ">>") == 0) {
+    //                 redirect_idx = i;
+    //                 break;
+    //             }
+    //         }
+
+    //         if (redirect_idx != -1) { // Redirection
+    //             if (redirect_idx == 1 || redirect_idx != argc - 2) {
+    //                 kprint("Usage: ECHO <text> >|>> <filename>\n");
+    //             } else {
+    //                 char *op = argv[redirect_idx];
+    //                 char *name = argv[redirect_idx + 1];
+                    
+    //                 char text_to_write[256] = {0}; // Max size of key_buffer
+    //                 int current_len = 0;
+
+    //                 for (int i = 1; i < redirect_idx; i++) {
+    //                     // Check for buffer overflow before copy
+    //                     if (current_len + strlen(argv[i]) + 1 >= sizeof(text_to_write)) {
+    //                         break; // Stop if buffer is full
+    //                     }
+    //                     kstrcpy(text_to_write + current_len, argv[i]);
+    //                     current_len += strlen(argv[i]);
+    //                     if (i < redirect_idx - 1) {
+    //                         text_to_write[current_len] = ' ';
+    //                         current_len++;
+    //                     }
+    //                 }
+    //                 text_to_write[current_len] = '\0';
+
+    //                 int idx = files_find(name);
+    //                 if (idx == -1) {
+    //                     idx = files_add(name);
+    //                     if (idx == -1) {
+    //                         kprint("file table full\n");
+    //                         kprint("zen> ");
+    //                         return;
+    //                     }
+    //                 }
+
+    //                 if (idx != -1) {
+    //                     int rc = -1;
+    //                     if (strcmp(op, ">") == 0) {
+    //                         rc = files_write_overwrite(idx, text_to_write);
+    //                     } else { // ">>"
+    //                         rc = files_write_append(idx, text_to_write);
+    //                     }
+    //                     if (rc != 0) kprint("(truncated)\n");
+    //                     else kprint("(ok)\n");
+    //                 }
+    //             }
+    //         } else { // No redirection
+    //             for (int i = 1; i < argc; i++) {
+    //                 kprint(argv[i]);
+    //                 if (i < argc - 1) {
+    //                     kprint(" ");
+    //                 }
+    //             }
+    //             kprint("\n");
+    //         }
     //     }
     // }
     else {
@@ -137,5 +171,5 @@ void user_input(char *input) {
         kprint(argv[0]);
         kprint("\n");
     }
-    kprint("zen> ");
+    kprint("> ");
 }
