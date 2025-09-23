@@ -16,7 +16,7 @@ main_entry:
     call switch_to_pm 
     jmp $ 
 
-; Include all the functions after the main code
+
 %include "boot/boot_print.asm"
 %include "boot/boot_print_hex.asm"
 %include "boot/boot_sect_disk.asm"
@@ -30,10 +30,10 @@ load_kernel:
     call print
     call print_nl
 
-    mov ax, 0x0000        ; Ensure ES:BX points to physical address
+    mov ax, 0x0000        
     mov es, ax
-    mov bx, KERNEL_OFFSET ; Buffer at 0x0000:0x1000
-    mov dh, 15         ; Read 15 sectors (>= kernel size)
+    mov bx, KERNEL_OFFSET 
+    mov dh, 15        
     mov dl, [BOOT_DRIVE]
     call disk_load
     ret
