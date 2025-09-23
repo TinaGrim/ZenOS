@@ -23,5 +23,9 @@ void kprint_backspace();
 void screen_move_cursor(int dx, int dy);
 int screen_get_cursor_offset(void);
 void screen_set_cursor_offset(int offset);
-
+int screen_get_offset(int col, int row);
+void set_cursor_offset(int offset);
+int get_offset(int col, int row);
+int get_offset_row(int offset);
+int get_offset_col(int offset);
 #endif

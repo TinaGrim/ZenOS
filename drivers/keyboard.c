@@ -96,23 +96,9 @@ static void keyboard_callback(registers_t regs) {
 
     if (scancode > SC_MAX) return;
     if (scancode == BACKSPACE) {
-        int len = strlen(key_buffer);
-        if (cursor_pos > 0) {
-            /* Move cursor left and delete char before it */
-            screen_move_cursor(-1, 0);
-            cursor_pos--;
-            /* Shift tail left from cursor_pos */
-            for (int i = cursor_pos; i < len; i++) {
-                key_buffer[i] = key_buffer[i+1];
-            }
-            int start_off = screen_get_cursor_offset();
-            /* Redraw tail from current cursor */
-            kprint(key_buffer + cursor_pos);
-            kprint(" "); /* erase leftover at end */
-            screen_set_cursor_offset(start_off);
-        }
+        backspace(key_buffer);
+        kprint_backspace();
     } else if (scancode == ENTER) {
-        kprint("\n");
         user_input(key_buffer); /* kernel-controlled function */
         key_buffer[0] = '\0';
         cursor_pos = 0;
