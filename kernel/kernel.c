@@ -14,8 +14,8 @@ void main() {
     isr_install();
     irq_install();
 
-    kprint_at("Welcome to the ZenOS!\n"
-        "Shit\nzen> ", MAX_COLS/2 - 10, 0);
+    kprint("Welcome to the ZenOS!\n"
+        "Shit\n> ");
 }
 
 void user_input(char *input) {
