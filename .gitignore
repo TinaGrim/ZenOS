@@ -2,3 +2,4 @@
 *.elf
 *.o
 .vscode/
+disk.img

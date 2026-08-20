@@ -1,6 +1,8 @@
 [org 0x7c00]
 
 KERNEL_OFFSET equ 0x1000 
+; Keep in sync with KERNEL_SECTORS in the makefile.
+KERNEL_LOAD_SECTORS equ 40 
 
 
 main_entry:
@@ -32,8 +34,9 @@ load_kernel:
 
     mov ax, 0x0000        
     mov es, ax
+    ; Keep in sync with KERNEL_SECTORS in the makefile.
     mov bx, KERNEL_OFFSET 
-    mov dh, 15        
+    mov dh, KERNEL_LOAD_SECTORS  
     mov dl, [BOOT_DRIVE]
     call disk_load
     ret

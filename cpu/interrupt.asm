@@ -1,6 +1,8 @@
 ; Defined in isr.c
 [extern isr_handler]
 [extern irq_handler]
+; Shared, switch-aware epilogue in cpu/switch.asm
+[extern task_epilogue]
 
 ; Common ISR code
 isr_common_stub:
@@ -17,19 +19,11 @@ isr_common_stub:
     ; 2. Call C handler
 	call isr_handler
 	
-    ; 3. Restore state
-	pop eax 
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
-	popa
-	add esp, 8 ; Cleans up the pushed error code and pushed ISR number
-	sti
-	iret ; pops 5 things at once: CS, EIP, EFLAGS, SS, and ESP
+    ; 3. Restore state / possibly switch tasks
+	jmp task_epilogue
 
-; Common IRQ code. Identical to ISR code except for the 'call' 
-; and the 'pop ebx'
+; Common IRQ code. Identical to ISR code except for the 'call'
+; and the 'jmp'
 irq_common_stub:
     pusha 
     mov ax, ds
@@ -40,15 +34,7 @@ irq_common_stub:
     mov fs, ax
     mov gs, ax
     call irq_handler ; Different than the ISR code
-    pop eax  ; Restore saved DS value (was saved in AX into EAX)
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    popa
-    add esp, 8
-    sti
-    iret 
+    jmp task_epilogue 
 	
 ; We don't get information about which interrupt was caller
 ; when the handler is run, so we will need to have a different handler
@@ -422,3 +408,12 @@ irq15:
 	push byte 15
 	push byte 47
 	jmp irq_common_stub
+
+; 0x80: syscall gate - installed as a DPL-3 interrupt gate so ring-3
+; programs can call into the kernel.
+global syscall_isr
+syscall_isr:
+	cli
+	push byte 0
+	push dword 128 ; full dword: `push byte 128` would sign-extend to 0xFFFFFF80
+	jmp isr_common_stub

@@ -53,6 +53,8 @@ extern void irq12();
 extern void irq13();
 extern void irq14();
 extern void irq15();
+/* Syscall gate (int 0x80) */
+extern void syscall_isr();
 
 #define IRQ0 32
 #define IRQ1 33

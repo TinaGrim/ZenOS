@@ -1,6 +1,9 @@
 #include "isr.h"
 #include "idt.h"
+#include "task.h"
+#include "syscall.h"
 #include "../drivers/screen.h"
+#include "../drivers/serial.h"
 #include "../drivers/keyboard.h"
 #include "../libc/string.h"
 #include "timer.h"
@@ -56,6 +59,12 @@ void isr_install() {
     port_byte_out(0x21, 0x0);
     port_byte_out(0xA1, 0x0); 
 
+    /* Enable only the timer (IRQ0) and keyboard (IRQ1) on the master.
+     * The IDE disk interrupt (IRQ14) is masked because it is polled
+     * via ATA PIO: a stray IRQ14 edge at boot derails the kernel. */
+    port_byte_out(0x21, 0xFC);
+    port_byte_out(0xA1, 0xFF); 
+
     // Install the IRQs
     set_idt_gate(32, (u32)irq0);
     set_idt_gate(33, (u32)irq1);
@@ -73,6 +82,9 @@ void isr_install() {
     set_idt_gate(45, (u32)irq13);
     set_idt_gate(46, (u32)irq14);
     set_idt_gate(47, (u32)irq15);
+
+    /* Syscall gate reachable from ring 3 */
+    set_idt_user_gate(128, (u32)syscall_isr);
 
     set_idt(); // Load with ASM
 }
@@ -117,8 +129,43 @@ char *exception_messages[] = {
 };
 
 void isr_handler(registers_t r) {
+    /* int 0x80 syscall */
+    if (r.int_no == 128) {
+        syscall_dispatch(r);
+        return;
+    }
+
+    /* Kernel panic dump: exception, faulting address, code segment. */
+    char s[16];
+    int_to_ascii(r.int_no, s);
+    serial_write_str("EX#");
+    serial_write_str(s);
+    serial_write_str("@eip=");
+    serial_write_int((int)r.eip);
+    serial_write_str(" cs=");
+    serial_write_int((int)r.cs);
+    serial_write_str("\n");
+
+    if (r.cs & 3) {
+        /* Exception raised in ring 3: kill the offending task rather
+         * than panic the whole kernel. */
+        serial_write_str("USR-FAULT int=");
+        serial_write_int((int)(u8)r.int_no);
+        serial_write_str(" eip=");
+        serial_write_int((int)r.eip);
+        serial_write_str(" eax=");
+        serial_write_int((int)r.eax);
+        serial_write_str(" ebx=");
+        serial_write_int((int)r.ebx);
+        serial_write_str("\n");
+        kprint("user code faulted: ");
+        kprint(exception_messages[(int)(u8)r.int_no]);
+        kprint("\n");
+        task_exit();
+        return;
+    }
+
     kprint("received interrupt: ");
-    char s[3];
     int_to_ascii(r.int_no, s);
     kprint(s);
     kprint("\n");

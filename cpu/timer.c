@@ -1,5 +1,6 @@
 #include "timer.h"
 #include "isr.h"
+#include "task.h"
 #include "ports.h"
 #include "../libc/function.h"
 
@@ -7,6 +8,9 @@ u32 tick = 0;
 
 static void timer_callback(registers_t regs) {
     tick++;
+    /* The timer is the preemption heartbeat: every tick, offer the
+     * scheduler a chance to run the next ready task. */
+    schedule();
     UNUSED(regs);
 }
 
