@@ -3,12 +3,16 @@ print:
 
 
 start:
-    mov al, [bx] 
-    cmp al, 0 
+    mov al, [bx]
+    cmp al, 0
     je done
 
     mov ah, 0x0e
-    int 0x10 
+    int 0x10
+
+    ; mirror to COM1 (QEMU logs it even headless)
+    mov dx, 0x3f8
+    out dx, al
 
     add bx, 1
     jmp start

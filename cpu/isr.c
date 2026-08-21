@@ -5,6 +5,7 @@
 #include "../drivers/screen.h"
 #include "../drivers/serial.h"
 #include "../drivers/keyboard.h"
+#include "../drivers/mouse.h"
 #include "../libc/string.h"
 #include "timer.h"
 #include "ports.h"
@@ -59,11 +60,11 @@ void isr_install() {
     port_byte_out(0x21, 0x0);
     port_byte_out(0xA1, 0x0); 
 
-    /* Enable only the timer (IRQ0) and keyboard (IRQ1) on the master.
-     * The IDE disk interrupt (IRQ14) is masked because it is polled
-     * via ATA PIO: a stray IRQ14 edge at boot derails the kernel. */
-    port_byte_out(0x21, 0xFC);
-    port_byte_out(0xA1, 0xFF); 
+    /* Enable timer (IRQ0), keyboard (IRQ1) and the cascade line (IRQ2):
+     * without IRQ2 unmasked every slave-PIC interrupt (incl. IRQ12 mouse)
+     * is blocked at the master. IDE (IRQ14) stays masked; ATA is polled. */
+    port_byte_out(0x21, 0xF8);
+    port_byte_out(0xA1, 0xFF);
 
     // Install the IRQs
     set_idt_gate(32, (u32)irq0);
@@ -194,6 +195,7 @@ void irq_install() {
     /* Install IRQ handlers first */
     init_timer(50);   /* IRQ0: timer */
     init_keyboard();  /* IRQ1: keyboard */
+    init_mouse();     /* IRQ12: PS/2 mouse (unmasks the slave PIC) */
     /* Now enable interrupts */
     asm volatile("sti");
 }

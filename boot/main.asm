@@ -2,7 +2,7 @@
 
 KERNEL_OFFSET equ 0x1000 
 ; Keep in sync with KERNEL_SECTORS in the makefile.
-KERNEL_LOAD_SECTORS equ 40 
+KERNEL_LOAD_SECTORS equ 53 
 
 
 main_entry:
@@ -52,9 +52,9 @@ BEGIN_PM:
 
 
 BOOT_DRIVE db 0 
-MSG_REAL_MODE db "Started in 16-bit Real Mode", 0
-MSG_PROT_MODE db "Landed in 32-bit Protected Mode", 0
-MSG_LOAD_KERNEL db "Loading kernel into memory", 0
+MSG_REAL_MODE db "16-bit mode", 0
+MSG_PROT_MODE db "32-bit PM", 0
+MSG_LOAD_KERNEL db "Loading kernel", 0
 
 
 times 510 - ($-$$) db 0

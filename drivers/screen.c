@@ -1,4 +1,5 @@
 #include "screen.h"
+#include "framebuffer.h"
 #include "../cpu/ports.h"
 #include "../libc/mem.h"
 
@@ -30,10 +31,15 @@ void kprint_at(const char *message, int col, int row) {
 }
 
 void kprint(const char *message) {
+    /* Mirror to the graphics console: with VBE active the VGA text
+     * buffer is not scanned out, so this is what the user actually
+     * sees. The text-mode write below stays as a no-op fallback. */
+    fb_print(message);
     kprint_at(message, -1, -1);
 }
 
 void kprint_backspace() {
+    fb_backspace();
     int offset = get_cursor_offset()-2;
     int row = get_offset_row(offset);
     int col = get_offset_col(offset);
@@ -104,6 +110,7 @@ void set_cursor_offset(int offset) {
 }
 
 void clear_screen() {
+    fb_console_clear();
     int screen_size = MAX_COLS * MAX_ROWS;
     int i;
     u8 *screen = (u8*) VIDEO_ADDRESS;

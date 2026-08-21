@@ -1,19 +1,25 @@
 C_SOURCES = $(wildcard kernel/*.c drivers/*.c cpu/*.c libc/*.c)
 HEADERS = $(wildcard kernel/*.h drivers/*.h cpu/*.h libc/*.h)
 # Nice syntax for file extension replacement
-OBJ = ${C_SOURCES:.c=.o} cpu/interrupt.o cpu/switch.o 
+OBJ = ${C_SOURCES:.c=.o} cpu/interrupt.o cpu/switch.o
+# Included asm is invisible to make's dependency scan; list it explicitly
+# so editing e.g. boot/boot_sect_disk.asm rebuilds boot/main.bin.
+BOOT_ASM = $(wildcard boot/*.asm)
 
 # Change this if your cross-compiler is somewhere else
 CC = i386-elf-gcc
 GDB = gdb
 # -g: Use debugging symbols in gcc
 # Add include paths so headers like libc/string.h are found
-CFLAGS = -g
+CFLAGS = -g -Os
 
 # First rule is run by default
 os-image.bin: boot/main.bin kernel.bin kernel.elf user/user.bin disk.img
 	cat boot/main.bin kernel.bin > os-image.bin
 	dd if=user/user.bin of=disk.img bs=512 seek=100 conv=notrunc status=none
+	# Pad to an exact 1.44M floppy so QEMU/BIOS pick standard geometry
+	# (18 spt / 2 heads / 80 cyls); tiny images get probed wrongly.
+	truncate -s 1474560 $@
 
 # Demo ring-3 user program: flat binary linked at USER_BIN_ADDR (0x100000),
 # injected into a fixed sector range of disk.img (see USER_BIN_* in
@@ -36,7 +42,7 @@ user/user.bin: user/user.c user/user.lds
 # Pad to a fixed size (see KERNEL_LOAD_SECTORS in boot/main.asm): keeps
 # int 0x13 disk reads from overrunning the image. Bump BOTH when the
 # kernel grows past this.
-KERNEL_SECTORS = 40
+KERNEL_SECTORS = 53
 kernel.bin: boot/kernel_entry.o ${OBJ}
 	i386-elf-ld -o $@ -Ttext 0x1000 $^ --oformat binary
 	@if [ $$(stat -c %s $@) -gt $$((${KERNEL_SECTORS} * 512)) ]; then \
@@ -54,12 +60,12 @@ disk.img:
 	qemu-img create -f raw disk.img 10M
 
 run: os-image.bin disk.img
-	qemu-system-i386 -fda os-image.bin -hda disk.img
+	qemu-system-i386 -drive file=os-image.bin,format=raw,if=floppy -drive file=disk.img,format=raw
 runc: clean os-image.bin disk.img
-	qemu-system-i386 -fda os-image.bin -hda disk.img
+	qemu-system-i386 -drive file=os-image.bin,format=raw,if=floppy -drive file=disk.img,format=raw
 # Open the connection to qemu and load our kernel-object file with symbols
 debug: os-image.bin disk.img
-	qemu-system-i386 -s -fda os-image.bin -hda disk.img &
+	qemu-system-i386 -s -drive file=os-image.bin,format=raw,if=floppy -drive file=disk.img,format=raw &
 	${GDB} -ex "target remote localhost:1234" -ex "symbol-file kernel.elf"
 
 # Generic rules for wildcards
@@ -70,7 +76,7 @@ debug: os-image.bin disk.img
 %.o: %.asm
 	nasm $< -f elf -o $@
 
-%.bin: %.asm
+%.bin: %.asm ${BOOT_ASM}
 	nasm $< -f bin -o $@
 
 clean:

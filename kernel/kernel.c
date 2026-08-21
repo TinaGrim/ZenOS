@@ -4,7 +4,9 @@
 #include "../cpu/task.h"
 #include "../drivers/ata.h"
 #include "../drivers/framebuffer.h"
+#include "../drivers/gui.h"
 #include "../drivers/keyboard.h"
+#include "../drivers/power.h"
 #include "../drivers/screen.h"
 #include "../drivers/serial.h"
 #include "../libc/files.h"
@@ -37,6 +39,12 @@ void main() {
   int cnt = files_count();
   serial_write_str("boot:files-ok\n");
 
+  /* Enter the desktop: wallpaper, taskbar, mouse cursor and a fresh
+   * terminal window. From here the shell's text output lands inside
+   * that window (kprint mirrors into the fb console viewport). */
+  gui_init();
+  serial_write_str("boot:gui\n");
+
   kprint("Welcome to ZenOS!\n");
   char bootmsg[16];
   int_to_ascii(cnt, bootmsg);
@@ -52,20 +60,26 @@ void main() {
 }
 
 /* Runs as task 0 in ring 0. Waits for a completed input line from the
- * keyboard driver, then executes it. */
+ * keyboard driver, then executes it. Between lines it pumps the GUI so
+ * the mouse cursor, hover states and clicks stay live. */
 void shell_main(void) {
   for (;;) {
+    if (gui_active())
+      gui_update();
     /* Leave the ready pool until a completed line exists. A timer or IRQ
      * will wake the hlt; we re-check the input flag each time so the shell
      * never spins while staying READY (which would steal the demo's CPU). */
     while (!input_pending()) {
       task_wait();
       asm volatile("sti; hlt");
+      if (gui_active())
+        gui_update();
     }
-    serial_write_str("shl:wake\n");
     char *line = input_line();
     user_input(line);
     input_consume();
+    if (gui_active())
+      gui_refresh(); /* file list may have changed */
   }
 }
 
@@ -90,6 +104,22 @@ void user_input(char *input) {
     asm volatile("hlt");
   } else if (strcmp(argv[0], "CLEAR") == 0) {
     clear_screen();
+  } else if (strcmp(argv[0], "SHUTDOWN") == 0) {
+    kprint("shutting down...\n");
+    serial_write_str("cmd:shutdown\n");
+    power_shutdown();
+  } else if (strcmp(argv[0], "REBOOT") == 0) {
+    kprint("rebooting...\n");
+    serial_write_str("cmd:reboot\n");
+    power_reboot();
+  } else if (strcmp(argv[0], "LOGOUT") == 0) {
+    kprint("logged out\n");
+    gui_logout();
+  } else if (strcmp(argv[0], "GUI") == 0) {
+    if (!gui_active()) {
+      gui_init();
+      kprint("> ");
+    }
   } else if ((strcmp(argv[0], "LS") == 0) || (strcmp(argv[0], "DIR") == 0)) {
     if (files_count() == 0) {
       kprint("(no files)\n");
